@@ -11,44 +11,51 @@ import (
 )
 
 func main() {
-	// File to upload
-	filePath := "./index.html"
-	file, err := os.Open(filePath)
+	// Prepare the files
+	htmlPath := "./index.html"
+	logoPath := "./logo.png"
+
+	// Open index.html
+	htmlFile, err := os.Open(htmlPath)
 	if err != nil {
-		fmt.Println("Error opening file:", err)
+		fmt.Println("Error opening HTML file:", err)
 		return
 	}
-	defer file.Close()
+	defer htmlFile.Close()
+
+	// Open logo.png
+	logoFile, err := os.Open(logoPath)
+	if err != nil {
+		fmt.Println("Error opening logo file:", err)
+		return
+	}
+	defer logoFile.Close()
 
 	// Create a buffer and multipart writer
 	var requestBody bytes.Buffer
 	writer := multipart.NewWriter(&requestBody)
 
-	// Create the form file field
-	formFile, err := writer.CreateFormFile("files", filepath.Base(filePath))
+	// Add index.html to the "files" field
+	htmlFormFile, err := writer.CreateFormFile("files", filepath.Base(htmlPath))
 	if err != nil {
-		fmt.Println("Error creating form file:", err)
+		fmt.Println("Error creating form file for HTML:", err)
+		return
+	}
+	if _, err = io.Copy(htmlFormFile, htmlFile); err != nil {
+		fmt.Println("Error copying HTML file:", err)
 		return
 	}
 
-	// Copy the file content into the form field
-	_, err = io.Copy(formFile, file)
+	// Add logo.png to the same "files" field
+	logoFormFile, err := writer.CreateFormFile("files", filepath.Base(logoPath))
 	if err != nil {
-		fmt.Println("Error copying file:", err)
+		fmt.Println("Error creating form file for logo:", err)
 		return
 	}
-
-	// imagePath := "./logo.png"
-	// imageFile, err := os.Open(imagePath)
-	// if err != nil {
-	// 	fmt.Println("Error opening imageFile:", err)
-	// 	return
-	// }
-	// defer imageFile.Close()
-
-	// // Create a buffer and multipart writer
-	// var requestImageBody bytes.Buffer
-	// writer = multipart.NewWriter(&requestImageBody)
+	if _, err = io.Copy(logoFormFile, logoFile); err != nil {
+		fmt.Println("Error copying logo file:", err)
+		return
+	}
 
 	// Close the writer to finalize the form
 	writer.Close()
@@ -74,11 +81,10 @@ func main() {
 	// Check for successful status code
 	if resp.StatusCode != http.StatusOK {
 		fmt.Println("Error: received non-200 response code:", resp.Status)
-		fmt.Println("Error: received non-200 response code:", resp.StatusCode)
 		return
 	}
 
-	// Save response body to my.pdf
+	// Save response body to generated.pdf
 	outputFile, err := os.Create("generated.pdf")
 	if err != nil {
 		fmt.Println("Error creating output file:", err)
@@ -86,8 +92,7 @@ func main() {
 	}
 	defer outputFile.Close()
 
-	_, err = io.Copy(outputFile, resp.Body)
-	if err != nil {
+	if _, err = io.Copy(outputFile, resp.Body); err != nil {
 		fmt.Println("Error saving PDF:", err)
 		return
 	}
